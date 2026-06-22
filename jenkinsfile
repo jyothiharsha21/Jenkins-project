@@ -1,0 +1,55 @@
+pipeline{
+    agent{
+        node{
+            label 'prod'
+        }
+    }
+    environment{
+        SCANNER_HOME = 'mysonar'
+    }
+    tools{
+        maven 'mymaven'
+    }
+    stages{
+        stage('code'){
+            steps{
+                git branch: 'master', url: 'https://github.com/jyothiharsha21/Jenkins-project.git'
+            }
+        }
+        stage('Build'){
+            steps{
+                sh 'mvn clean package'
+            }
+        }
+        stage('CQA'){
+            steps{
+                sh '''
+                mvn sonar:sonar \
+                -Dsonar.projectKey=MyProject \
+                -Dsonar.host.url=http://13.50.242.155:9000 \
+                -Dsonar.login=fbc324d707a9ebf5b09331b987204319fdfbdbd1
+                '''
+            }
+        }
+        stage('Artifact'){
+            steps{
+                nexusArtifactUploader artifacts: [[artifactId: 'myweb', classifier: '', file: 'target/myweb-8.7.7.war', type: 'war']], credentialsId: 'nexus_creds', groupId: 'in.javahome', nexusUrl: '13.50.251.215:8081', nexusVersion: 'nexus3', protocol: 'http', repository: 'harsha-repo', version: '8.7.7'
+            }
+        }
+        stage('Deploy'){
+            input{
+                message "can I proceed with the Deployment"
+            }
+            steps{
+                deploy adapters: [tomcat9(alternativeDeploymentContext: '', credentialsId: 'tomcat_creds', path: '', url: 'http://16.171.253.212:8080/')], contextPath: 'e-commerce', war: 'target/*.war'
+            }
+        }
+    }
+    post{
+        always{
+            echo 'Application is deployed successfully in PROD environment'
+        }
+    }
+}
+    
+    
